@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Predicción de Esperanza de Vida</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 40px 16px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+      max-width: 620px;
+      width: 100%;
+      padding: 40px;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a202c;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 14px;
+      color: #718096;
+      line-height: 1.6;
+    }
+
+    .badge {
+      display: inline-block;
+      background: #ebf4ff;
+      color: #2b6cb0;
+      font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 16px;
+      font-weight: 500;
+    }
+
+    .instrucciones {
+      background: #f7fafc;
+      border-left: 3px solid #4299e1;
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      color: #4a5568;
+      line-height: 1.6;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .campo {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .campo.full {
+      grid-column: 1 / -1;
+    }
+
+    label {
+      font-size: 13px;
+      font-weight: 600;
+      color: #2d3748;
+    }
+
+    .hint {
+      font-size: 11px;
+      color: #a0aec0;
+      margin-top: 1px;
+    }
+
+    input[type="number"],
+    select {
+      border: 1.5px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 10px 12px;
+      font-size: 14px;
+      color: #2d3748;
+      background: #fff;
+      transition: border-color 0.2s;
+      width: 100%;
+    }
+
+    input[type="number"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #4299e1;
+    }
+
+    input.error,
+    select.error {
+      border-color: #fc8181;
+      background: #fff5f5;
+    }
+
+    .msg-error {
+      font-size: 11px;
+      color: #e53e3e;
+      margin-top: 2px;
+    }
+
+    .btn {
+      width: 100%;
+      margin-top: 24px;
+      padding: 14px;
+      background: #3182ce;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn:hover { background: #2b6cb0; }
+
+    .resultado {
+      margin-top: 24px;
+      background: #f0fff4;
+      border: 1.5px solid #9ae6b4;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .resultado .valor {
+      font-size: 42px;
+      font-weight: 800;
+      color: #276749;
+    }
+
+    .resultado .unidad {
+      font-size: 16px;
+      color: #38a169;
+      margin-top: 4px;
+    }
+
+    .resultado .etiqueta {
+      font-size: 13px;
+      color: #718096;
+      margin-top: 8px;
+    }
+
+    .divider {
+      border: none;
+      border-top: 1px solid #e2e8f0;
+      margin: 28px 0;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: #cbd5e0;
+      margin-top: 24px;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="header">
+      <span class="badge">Modelo de Regresión — WHO Life Expectancy</span>
+      <h1>Predicción de Esperanza de Vida</h1>
+      <p>Modelo entrenado con datos de la Organización Mundial de la Salud (2000–2015),
+         193 países. Predice la esperanza de vida en años a partir de 7 indicadores sanitarios
+         y socioeconómicos.</p>
+    </div>
+
+    <div class="instrucciones">
+      Ingresa los valores reales del país o escenario que deseas evaluar. El modelo aplicará
+      internamente la imputación, codificación y escalado necesarios.
+    </div>
+
+    <form method="POST" action="/predict" novalidate>
+      <div class="grid">
+
+        <!-- Mortalidad adulta -->
+        <div class="campo">
+          <label for="adult_mortality">Mortalidad adulta</label>
+          <span class="hint">Muertes por 1,000 hab. entre 15–60 años — rango: 1 a 723</span>
+          <input
+            type="number" id="adult_mortality" name="adult_mortality"
+            step="0.1" min="1" max="723"
+            value="{{ form.adult_mortality if form else '' }}"
+            class="{{ 'error' if errores and errores.adult_mortality else '' }}"
+            placeholder="Ej: 120"
+          />
+          {% if errores and errores.adult_mortality %}
+            <span class="msg-error">{{ errores.adult_mortality }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Composición de ingresos -->
+        <div class="campo">
+          <label for="income_comp">Composición de ingresos</label>
+          <span class="hint">Índice HDI (0 = muy bajo, 1 = muy alto) — rango: 0.0 a 1.0</span>
+          <input
+            type="number" id="income_comp" name="income_comp"
+            step="0.01" min="0" max="1"
+            value="{{ form.income_comp if form else '' }}"
+            class="{{ 'error' if errores and errores.income_comp else '' }}"
+            placeholder="Ej: 0.68"
+          />
+          {% if errores and errores.income_comp %}
+            <span class="msg-error">{{ errores.income_comp }}</span>
+          {% endif %}
+        </div>
+
+        <!-- VIH/SIDA -->
+        <div class="campo">
+          <label for="hiv_aids">Muertes VIH/SIDA</label>
+          <span class="hint">Por 1,000 nacidos vivos (0–4 años) — rango: 0.1 a 50.6</span>
+          <input
+            type="number" id="hiv_aids" name="hiv_aids"
+            step="0.1" min="0.1" max="50.6"
+            value="{{ form.hiv_aids if form else '' }}"
+            class="{{ 'error' if errores and errores.hiv_aids else '' }}"
+            placeholder="Ej: 0.5"
+          />
+          {% if errores and errores.hiv_aids %}
+            <span class="msg-error">{{ errores.hiv_aids }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Escolaridad -->
+        <div class="campo">
+          <label for="schooling">Escolaridad</label>
+          <span class="hint">Años promedio de educación — rango: 0 a 20.7</span>
+          <input
+            type="number" id="schooling" name="schooling"
+            step="0.1" min="0" max="20.7"
+            value="{{ form.schooling if form else '' }}"
+            class="{{ 'error' if errores and errores.schooling else '' }}"
+            placeholder="Ej: 13.5"
+          />
+          {% if errores and errores.schooling %}
+            <span class="msg-error">{{ errores.schooling }}</span>
+          {% endif %}
+        </div>
+
+        <!-- PIB -->
+        <div class="campo">
+          <label for="gdp">PIB per cápita (USD)</label>
+          <span class="hint">Producto Interno Bruto — rango: 1 a 120,000</span>
+          <input
+            type="number" id="gdp" name="gdp"
+            step="1" min="1" max="120000"
+            value="{{ form.gdp if form else '' }}"
+            class="{{ 'error' if errores and errores.gdp else '' }}"
+            placeholder="Ej: 5000"
+          />
+          {% if errores and errores.gdp %}
+            <span class="msg-error">{{ errores.gdp }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Difteria -->
+        <div class="campo">
+          <label for="diphtheria">Cobertura Difteria DTP3 (%)</label>
+          <span class="hint">Porcentaje de vacunación — rango: 2 a 99</span>
+          <input
+            type="number" id="diphtheria" name="diphtheria"
+            step="0.1" min="2" max="99"
+            value="{{ form.diphtheria if form else '' }}"
+            class="{{ 'error' if errores and errores.diphtheria else '' }}"
+            placeholder="Ej: 85"
+          />
+          {% if errores and errores.diphtheria %}
+            <span class="msg-error">{{ errores.diphtheria }}</span>
+          {% endif %}
+        </div>
+
+        <!-- Status -->
+        <div class="campo full">
+          <label for="status">Nivel de desarrollo del país</label>
+          <span class="hint">Clasificación de la OMS</span>
+          <select id="status" name="status"
+            class="{{ 'error' if errores and errores.status else '' }}">
+            <option value="">-- Selecciona --</option>
+            <option value="Developed"   {{ 'selected' if form and form.status == 'Developed'   else '' }}>Desarrollado (Developed)</option>
+            <option value="Developing"  {{ 'selected' if form and form.status == 'Developing'  else '' }}>En desarrollo (Developing)</option>
+          </select>
+          {% if errores and errores.status %}
+            <span class="msg-error">{{ errores.status }}</span>
+          {% endif %}
+        </div>
+
+      </div>
+
+      <button type="submit" class="btn">Predecir esperanza de vida</button>
+    </form>
+
+    {% if prediccion is not none %}
+      <hr class="divider" />
+      <div class="resultado">
+        <div class="valor">{{ prediccion }}</div>
+        <div class="unidad">años</div>
+        <div class="etiqueta">Esperanza de vida estimada para las condiciones ingresadas</div>
+      </div>
+    {% endif %}
+
+    <p class="footer">Modelo: Gradient Boosting Regressor · Dataset: WHO Life Expectancy (2000–2015)</p>
+  </div>
+</body>
+</html>

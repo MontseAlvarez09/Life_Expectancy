@@ -11,8 +11,6 @@ pipeline = joblib.load(MODEL_PATH)
 
 # Columnas que espera el pipeline (en el mismo orden del entrenamiento)
 FEATURES_NUM = ['Adult Mortality', 'Income composition of resources', ' HIV/AIDS', 'Schooling', 'GDP', 'Diphtheria ']
-FEATURES_CAT = ['Status']
-ALL_FEATURES  = FEATURES_NUM + FEATURES_CAT
 
 
 @app.route('/', methods=['GET'])
@@ -46,23 +44,24 @@ def predict():
     schooling       = get_float('schooling', 'Escolaridad', 0.0, 20.7)
     gdp             = get_float('gdp', 'PIB per cápita', 1.0, 120000.0)
     diphtheria      = get_float('diphtheria', 'Cobertura Difteria', 2.0, 99.0)
-    status          = request.form.get('status', '').strip()
 
+    # Status se sigue leyendo y validando para mostrarlo en pantalla,
+    # pero no se le pasa al modelo porque el pipeline no fue entrenado con esta columna
+    status = request.form.get('status', '').strip()
     if status not in ('Developed', 'Developing'):
         errores['status'] = 'Selecciona un nivel de desarrollo válido.'
 
     if errores:
         return render_template('index.html', errores=errores, form=request.form)
 
-    # --- Construcción del DataFrame de entrada ---
+    # --- Construcción del DataFrame de entrada (solo las 6 columnas del pipeline) ---
     entrada = pd.DataFrame([{
         'Adult Mortality':                    adult_mortality,
         'Income composition of resources':    income_comp,
         ' HIV/AIDS':                          hiv_aids,
         'Schooling':                          schooling,
         'GDP':                                gdp,
-        'Diphtheria ':                        diphtheria,
-        'Status':                             status
+        'Diphtheria ':                        diphtheria
     }])
 
     # --- Predicción ---
